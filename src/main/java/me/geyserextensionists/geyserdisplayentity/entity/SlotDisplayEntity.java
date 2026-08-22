@@ -117,11 +117,151 @@ public class SlotDisplayEntity extends Entity {
         propertyManager.addProperty(new FloatProperty(Identifier.of("geyser:t_z"), MAX_VALUE, MIN_VALUE, 0F), t.getZ() * 10);
     }
 
+    private void logRotationState(String source) {
+
+        Quaternionf left =
+                lastLeft != null
+                        ? lastLeft
+                        : Quaternionf.IDENTITY;
+
+        Quaternionf right =
+                lastRight != null
+                        ? lastRight
+                        : Quaternionf.IDENTITY;
+
+        System.out.println(
+                "[GeyserDisplayEntity] ROTATION "
+                        + source
+                        + " world=("
+                        + position.getX() + ", "
+                        + position.getY() + ", "
+                        + position.getZ() + ") "
+                        + "left=("
+                        + left.getX() + ", "
+                        + left.getY() + ", "
+                        + left.getZ() + ", "
+                        + left.getW() + ") "
+                        + "right=("
+                        + right.getX() + ", "
+                        + right.getY() + ", "
+                        + right.getZ() + ", "
+                        + right.getW() + ") "
+                        + "bedrockYaw="
+                        + getCombinedYaw()
+        );
+    }
+
+    private float getCombinedYaw() {
+
+        Quaternionf left =
+                lastLeft != null
+                        ? lastLeft.normalize()
+                        : Quaternionf.IDENTITY;
+
+        Quaternionf right =
+                lastRight != null
+                        ? lastRight.normalize()
+                        : Quaternionf.IDENTITY;
+
+        float lw = left.getW();
+        float lx = left.getX();
+        float ly = left.getY();
+        float lz = left.getZ();
+
+        float rw = right.getW();
+        float rx = right.getX();
+        float ry = right.getY();
+        float rz = right.getZ();
+
+        float w =
+                lw * rw
+                        - lx * rx
+                        - ly * ry
+                        - lz * rz;
+
+        float x =
+                lw * rx
+                        + lx * rw
+                        + ly * rz
+                        - lz * ry;
+
+        float y =
+                lw * ry
+                        - lx * rz
+                        + ly * rw
+                        + lz * rx;
+
+        float z =
+                lw * rz
+                        + lx * ry
+                        - ly * rx
+                        + lz * rw;
+
+        double sinYaw =
+                2.0 * (
+                        w * y
+                                + x * z
+                );
+
+        double cosYaw =
+                1.0
+                        - 2.0 * (
+                        y * y
+                                + z * z
+                );
+
+        return MathUtils.wrapDegrees(
+                -(float) Math.toDegrees(
+                        Math.atan2(
+                                sinYaw,
+                                cosYaw
+                        )
+                )
+        );
+    }
+
     protected void pushRotationProperties() {
-        Vector3f r = this.displayRotation;
-        propertyManager.addProperty(new FloatProperty(Identifier.of("geyser:r_x"), 180F, -180F, 0F), MathUtils.wrapDegrees(r.getX()));
-        propertyManager.addProperty(new FloatProperty(Identifier.of("geyser:r_y"), 180F, -180F, 0F), MathUtils.wrapDegrees(-r.getY()));
-        propertyManager.addProperty(new FloatProperty(Identifier.of("geyser:r_z"), 180F, -180F, 0F), MathUtils.wrapDegrees(-r.getZ()));
+
+        float yawDegrees = getCombinedYaw();
+
+        if (displayRotation != null) {
+            yawDegrees += displayRotation.getY();
+        }
+
+        yawDegrees =
+                MathUtils.wrapDegrees(
+                        yawDegrees
+                );
+
+        propertyManager.addProperty(
+                new FloatProperty(
+                        Identifier.of("geyser:r_x"),
+                        180F,
+                        -180F,
+                        0F
+                ),
+                0F
+        );
+
+        propertyManager.addProperty(
+                new FloatProperty(
+                        Identifier.of("geyser:r_y"),
+                        180F,
+                        -180F,
+                        0F
+                ),
+                yawDegrees
+        );
+
+        propertyManager.addProperty(
+                new FloatProperty(
+                        Identifier.of("geyser:r_z"),
+                        180F,
+                        -180F,
+                        0F
+                ),
+                0F
+        );
     }
 
     public void setScale(EntityMetadata<Vector3f, ?> entityMetadata) {
@@ -141,26 +281,38 @@ public class SlotDisplayEntity extends Entity {
         this.metadata.put(EntityDataTypes.SCALE, scale);
     }
 
-    public void setLeftRotation(EntityMetadata<Quaternionf, ?> entityMetadata) {
+    public void setLeftRotation(
+            EntityMetadata<Quaternionf, ?> entityMetadata
+    ) {
+
         Quaternionf quaternion = entityMetadata.getValue();
 
-        if (!this.lastLeft.equals(quaternion)) {
-            this.lastLeft = quaternion;
-            setRotation(quaternion);
-            rotationUpdated = true;
-            applyBedrockYawPitchFromCombined();
-        }
+        this.lastLeft =
+                quaternion != null
+                        ? quaternion
+                        : Quaternionf.IDENTITY;
+
+        pushRotationProperties();
+        updateBedrockEntityProperties();
+
+        logRotationState("LEFT");
     }
 
-    public void setRightRotation(EntityMetadata<Quaternionf, ?> entityMetadata) {
+    public void setRightRotation(
+            EntityMetadata<Quaternionf, ?> entityMetadata
+    ) {
+
         Quaternionf quaternion = entityMetadata.getValue();
 
-        if (!this.lastRight.equals(quaternion)) {
-            this.lastRight = quaternion;
-            setRotation(quaternion);
-            rotationUpdated = true;
-            applyBedrockYawPitchFromCombined();
-        }
+        this.lastRight =
+                quaternion != null
+                        ? quaternion
+                        : Quaternionf.IDENTITY;
+
+        pushRotationProperties();
+        updateBedrockEntityProperties();
+
+        logRotationState("RIGHT");
     }
 
     protected void setRotation(Quaternionf q) {

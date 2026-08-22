@@ -16,7 +16,10 @@ import org.geysermc.geyser.api.event.lifecycle.GeyserDefineEntityPropertiesEvent
 import org.geysermc.geyser.api.event.lifecycle.GeyserPreInitializeEvent;
 import org.geysermc.geyser.api.extension.Extension;
 import org.geysermc.geyser.api.util.Identifier;
-import org.geysermc.geyser.entity.*;
+import org.geysermc.geyser.entity.BedrockEntityDefinition;
+import org.geysermc.geyser.entity.EntityTypeBase;
+import org.geysermc.geyser.entity.EntityTypeDefinition;
+import org.geysermc.geyser.entity.VanillaEntityType;
 import org.geysermc.geyser.entity.type.Entity;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.metadata.MetadataTypes;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.type.EntityType;
@@ -35,124 +38,557 @@ public class GeyserDisplayEntity implements Extension {
     private static VanillaEntityType<ItemDisplayEntity> ITEM_DISPLAY;
     private static VanillaEntityType<BlockDisplayEntity> BLOCK_DISPLAY;
 
-    public static final Integer MAX_VALUE = 1000000;
-    public static final Integer MIN_VALUE = -1000000;
+    public static final Integer MAX_VALUE =
+            1000000;
+
+    public static final Integer MIN_VALUE =
+            -1000000;
+
+    /*
+     * ========================================
+     * PRE INITIALIZE
+     * ========================================
+     */
 
     @Subscribe
-    public void onLoad(GeyserPreInitializeEvent event) {
-        extension = this;
-        loadManagers();
+    public void onLoad(
+            GeyserPreInitializeEvent event
+    ) {
+
+        ensureManagersLoaded();
     }
 
-    @Subscribe
-    public void onDefineEntities(GeyserDefineEntitiesEvent event) {
-        //TODO loop through entity type hashmap
+    /*
+     * ========================================
+     * DEFINE ENTITIES
+     * ========================================
+     */
 
-        ITEM_DISPLAY_BEDROCK = EntityUtils.findOrRegisterCustomDefinition(this, event, Identifier.of("geyser:item_display"));
-        BLOCK_DISPLAY_BEDROCK = EntityUtils.findOrRegisterCustomDefinition(this, event, Identifier.of("geyser:block_display"));
+    @Subscribe
+    public void onDefineEntities(
+            GeyserDefineEntitiesEvent event
+    ) {
+
+        ensureManagersLoaded();
+
+        ITEM_DISPLAY_BEDROCK =
+                EntityUtils.findOrRegisterCustomDefinition(
+                        this,
+                        event,
+                        Identifier.of(
+                                "geyser:item_display"
+                        )
+                );
+
+        BLOCK_DISPLAY_BEDROCK =
+                EntityUtils.findOrRegisterCustomDefinition(
+                        this,
+                        event,
+                        Identifier.of(
+                                "geyser:block_display"
+                        )
+                );
     }
 
+    /*
+     * ========================================
+     * ENTITY PROPERTIES
+     * ========================================
+     */
+
     @Subscribe
-    public void onEntityPropertiesEvent(GeyserDefineEntityPropertiesEvent event) {
+    public void onEntityPropertiesEvent(
+            GeyserDefineEntityPropertiesEvent event
+    ) {
+
+        /*
+         * CRITICAL FIX:
+         *
+         * On some Geyser startup sequences this event
+         * arrives before GeyserPreInitializeEvent has
+         * initialized ConfigManager.
+         *
+         * The original extension dereferenced
+         * configManager here and crashed.
+         */
+        ensureManagersLoaded();
+
+        logger().info(
+                "DEBUG MetadataTypes.INT = "
+                        + MetadataTypes.INT
+        );
+
+        logger().info(
+                "DEBUG MetadataTypes.BLOCK_STATE = "
+                        + MetadataTypes.BLOCK_STATE
+        );
+
+        logger().info(
+                "DEBUG MetadataTypes.OPTIONAL_BLOCK_STATE = "
+                        + MetadataTypes.OPTIONAL_BLOCK_STATE
+        );
+
+        logger().info(
+                "DEBUG MetadataTypes.INT id = "
+                        + MetadataTypes.INT.getId()
+        );
+
+        logger().info(
+                "DEBUG MetadataTypes.BLOCK_STATE id = "
+                        + MetadataTypes.BLOCK_STATE.getId()
+        );
+
+        logger().info(
+                "DEBUG MetadataTypes.OPTIONAL_BLOCK_STATE id = "
+                        + MetadataTypes.OPTIONAL_BLOCK_STATE.getId()
+        );
+
         try {
-            registerDisplayProperties(event, Identifier.of("geyser:item_display"));
-            registerDisplayProperties(event, Identifier.of("geyser:block_display"));
 
-            EntityTypeBase<Entity> entityBase = EntityTypeDefinition.baseBuilder(Entity.class)
-                    .addTranslator(MetadataTypes.BYTE, Entity::setFlags)
-                    .addTranslator(MetadataTypes.INT, Entity::setAir) // Air/bubbles
-                    .addTranslator(MetadataTypes.OPTIONAL_COMPONENT, Entity::setCustomName)
-                    .addTranslator(MetadataTypes.BOOLEAN, Entity::setCustomNameVisible)
-                    .addTranslator(MetadataTypes.BOOLEAN, Entity::setSilent)
-                    .addTranslator(MetadataTypes.BOOLEAN, Entity::setGravity)
-                    .addTranslator(MetadataTypes.POSE, (entity, entityMetadata) -> entity.setPose(entityMetadata.getValue()))
-                    .addTranslator(MetadataTypes.INT, Entity::setFreezing)
-                    .build();
+            registerDisplayProperties(
+                    event,
+                    Identifier.of(
+                            "geyser:item_display"
+                    )
+            );
 
-            EntityTypeBase<SlotDisplayEntity> slotDisplayBase = EntityTypeBase.baseInherited(SlotDisplayEntity.class, entityBase)
-                    .addTranslator(null) // Interpolation start ticks
-                    .addTranslator(null) // Interpolation duration ID
-                    .addTranslator(null) // Position/Rotation interpolation duration
-                    .addTranslator(MetadataTypes.VECTOR3, SlotDisplayEntity::setTranslation) // Translation
-                    .addTranslator(MetadataTypes.VECTOR3, SlotDisplayEntity::setScale) // Scale
-                    .addTranslator(MetadataTypes.QUATERNION, SlotDisplayEntity::setLeftRotation) // Left rotation
-                    .addTranslator(MetadataTypes.QUATERNION, SlotDisplayEntity::setRightRotation) // Right rotation
-                    .addTranslator(null) // Billboard render constraints
-                    .addTranslator(null) // Brightness override
-                    .addTranslator(null) // View range
-                    .addTranslator(null) // Shadow radius
-                    .addTranslator(null) // Shadow strength
-                    .addTranslator(null) // Width
-                    .addTranslator(null) // Height
-                    .addTranslator(null) // Glow color override
-                    .build();
+            registerDisplayProperties(
+                    event,
+                    Identifier.of(
+                            "geyser:block_display"
+                    )
+            );
 
-            BLOCK_DISPLAY = VanillaEntityType.inherited(BlockDisplayEntity::new, slotDisplayBase)
-                    .type(EntityType.BLOCK_DISPLAY)
-                    .height(configManager.getConfig().getFloat("general.height")).width(0.001f)
-                    .bedrockDefinition(BLOCK_DISPLAY_BEDROCK)
-                    .addTranslator(MetadataTypes.BLOCK_STATE, BlockDisplayEntity::setDisplayedBlockState)
-                    .build();
+            EntityTypeBase<Entity> entityBase =
+                    EntityTypeDefinition
+                            .baseBuilder(
+                                    Entity.class
+                            )
+                            .addTranslator(
+                                    MetadataTypes.BYTE,
+                                    Entity::setFlags
+                            )
+                            .addTranslator(
+                                    MetadataTypes.INT,
+                                    Entity::setAir
+                            )
+                            .addTranslator(
+                                    MetadataTypes.OPTIONAL_COMPONENT,
+                                    Entity::setCustomName
+                            )
+                            .addTranslator(
+                                    MetadataTypes.BOOLEAN,
+                                    Entity::setCustomNameVisible
+                            )
+                            .addTranslator(
+                                    MetadataTypes.BOOLEAN,
+                                    Entity::setSilent
+                            )
+                            .addTranslator(
+                                    MetadataTypes.BOOLEAN,
+                                    Entity::setGravity
+                            )
+                            .addTranslator(
+                                    MetadataTypes.POSE,
+                                    (
+                                            entity,
+                                            entityMetadata
+                                    ) ->
+                                            entity.setPose(
+                                                    entityMetadata.getValue()
+                                            )
+                            )
+                            .addTranslator(
+                                    MetadataTypes.INT,
+                                    Entity::setFreezing
+                            )
+                            .build();
 
-            ITEM_DISPLAY = VanillaEntityType.inherited(ItemDisplayEntity::new, slotDisplayBase)
-                    .type(EntityType.ITEM_DISPLAY)
-                    .height(configManager.getConfig().getFloat("general.height")).width(0.001f)
-                    .bedrockDefinition(ITEM_DISPLAY_BEDROCK)
-                    .addTranslator(MetadataTypes.ITEM_STACK, ItemDisplayEntity::setDisplayedItem)
-                    .addTranslator(MetadataTypes.BYTE, ItemDisplayEntity::setDisplayType)
-                    .build();
+            EntityTypeBase<SlotDisplayEntity> slotDisplayBase =
+                    EntityTypeBase
+                            .baseInherited(
+                                    SlotDisplayEntity.class,
+                                    entityBase
+                            )
+                            .addTranslator(
+                                    null
+                            )
+                            .addTranslator(
+                                    null
+                            )
+                            .addTranslator(
+                                    null
+                            )
+                            .addTranslator(
+                                    MetadataTypes.VECTOR3,
+                                    SlotDisplayEntity::setTranslation
+                            )
+                            .addTranslator(
+                                    MetadataTypes.VECTOR3,
+                                    SlotDisplayEntity::setScale
+                            )
+                            .addTranslator(
+                                    MetadataTypes.QUATERNION,
+                                    SlotDisplayEntity::setLeftRotation
+                            )
+                            .addTranslator(
+                                    MetadataTypes.QUATERNION,
+                                    SlotDisplayEntity::setRightRotation
+                            )
+                            .addTranslator(
+                                    null
+                            )
+                            .addTranslator(
+                                    null
+                            )
+                            .addTranslator(
+                                    null
+                            )
+                            .addTranslator(
+                                    null
+                            )
+                            .addTranslator(
+                                    null
+                            )
+                            .addTranslator(
+                                    null
+                            )
+                            .addTranslator(
+                                    null
+                            )
+                            .build();
 
-            EntityUtils.replaceJavaDefinition(EntityType.BLOCK_DISPLAY, BLOCK_DISPLAY);
-            EntityUtils.replaceJavaDefinition(EntityType.ITEM_DISPLAY, ITEM_DISPLAY);
+            BLOCK_DISPLAY =
+                    VanillaEntityType
+                            .inherited(
+                                    BlockDisplayEntity::new,
+                                    slotDisplayBase
+                            )
+                            .type(
+                                    EntityType.BLOCK_DISPLAY
+                            )
+                            .height(
+                                    configManager
+                                            .getConfig()
+                                            .getFloat(
+                                                    "general.height"
+                                            )
+                            )
+                            .width(
+                                    0.001f
+                            )
+                            .bedrockDefinition(
+                                    BLOCK_DISPLAY_BEDROCK
+                            )
+
+                            /*
+                             * Minecraft 1.21.11 / Geyser 2.11.1:
+                             *
+                             * There is an additional INT metadata field
+                             * before the BlockDisplay block-state field.
+                             *
+                             * Without this placeholder, BLOCK_STATE gets
+                             * registered at metadata ID 22 instead of 23.
+                             */
+                            .addTranslator(
+                                    null
+                            )
+
+                            .addTranslator(
+                                    MetadataTypes.BLOCK_STATE,
+                                    BlockDisplayEntity::setDisplayedBlockState
+                            )
+                            .build();
+
+            ITEM_DISPLAY =
+                    VanillaEntityType
+                            .inherited(
+                                    ItemDisplayEntity::new,
+                                    slotDisplayBase
+                            )
+                            .type(
+                                    EntityType.ITEM_DISPLAY
+                            )
+                            .height(
+                                    configManager
+                                            .getConfig()
+                                            .getFloat(
+                                                    "general.height"
+                                            )
+                            )
+                            .width(
+                                    0.001f
+                            )
+                            .bedrockDefinition(
+                                    ITEM_DISPLAY_BEDROCK
+                            )
+                            .addTranslator(
+                                    MetadataTypes.ITEM_STACK,
+                                    ItemDisplayEntity::setDisplayedItem
+                            )
+                            .addTranslator(
+                                    MetadataTypes.BYTE,
+                                    ItemDisplayEntity::setDisplayType
+                            )
+                            .build();
+
+            EntityUtils.replaceJavaDefinition(
+                    EntityType.BLOCK_DISPLAY,
+                    BLOCK_DISPLAY
+            );
+
+            EntityUtils.replaceJavaDefinition(
+                    EntityType.ITEM_DISPLAY,
+                    ITEM_DISPLAY
+            );
+
         } catch (Throwable err) {
-            logger().error("Error in load", err);
+
+            logger().error(
+                    "Error in load",
+                    err
+            );
         }
 
-        logger().info("Done");
+        logger().info(
+                "Done"
+        );
     }
+
+    /*
+     * ========================================
+     * COMMANDS
+     * ========================================
+     */
 
     @Subscribe
-    public void onDefineCommand(GeyserDefineCommandsEvent event) {
-        event.register(Command.builder(this)
-                .name("reload")
-                .source(CommandSource.class)
-                .playerOnly(false)
-                .description("GeyserDisplayEntity Reload Command")
-                .permission("geyserdisplayentity.commands.reload")
-                .executor((source, command, args) -> {
-                    configManager.load();
-                    source.sendMessage(configManager.getLang().getString("commands.geyserdisplayentity.reload.successfully-reloaded"));
-                })
-                .build());
+    public void onDefineCommand(
+            GeyserDefineCommandsEvent event
+    ) {
+
+        ensureManagersLoaded();
+
+        event.register(
+                Command.builder(
+                                this
+                        )
+                        .name(
+                                "reload"
+                        )
+                        .source(
+                                CommandSource.class
+                        )
+                        .playerOnly(
+                                false
+                        )
+                        .description(
+                                "GeyserDisplayEntity Reload Command"
+                        )
+                        .permission(
+                                "geyserdisplayentity.commands.reload"
+                        )
+                        .executor(
+                                (
+                                        source,
+                                        command,
+                                        args
+                                ) -> {
+
+                                    configManager.load();
+
+                                    source.sendMessage(
+                                            configManager
+                                                    .getLang()
+                                                    .getString(
+                                                            "commands.geyserdisplayentity.reload.successfully-reloaded"
+                                                    )
+                                    );
+                                }
+                        )
+                        .build()
+        );
     }
 
-    private void registerDisplayProperties(GeyserDefineEntityPropertiesEvent event, Identifier entityIdentifier) {
-        Collection<GeyserEntityProperty<?>> existing = event.properties(entityIdentifier);
+    /*
+     * ========================================
+     * DISPLAY PROPERTIES
+     * ========================================
+     */
 
-        FileConfiguration entityConfig = configManager.getEntityTypesCache().get(entityIdentifier);
-        for (Object entityKey : entityConfig.getConfigurationSection("properties").getRootNode().childrenMap().keySet()) {
-            String entityString = entityKey.toString();
-            FileConfiguration propertyConfig = entityConfig.getConfigurationSection("properties." + entityString);
+    private void registerDisplayProperties(
+            GeyserDefineEntityPropertiesEvent event,
+            Identifier entityIdentifier
+    ) {
 
-            String propertyType = propertyConfig.getString("property-type");
+        ensureManagersLoaded();
 
-            if (propertyType.equals("integer")) {
-                EntityUtils.registerInteger(event, existing, entityIdentifier, propertyConfig.getString("id"), propertyConfig.getInt("min-value"), propertyConfig.getInt("max-value"), propertyConfig.getInt("default-value"));
-            } else if (propertyType.equals("float")) {
-                EntityUtils.registerFloat(event, existing, entityIdentifier, propertyConfig.getString("id"), propertyConfig.getInt("min-value"), propertyConfig.getInt("max-value"), propertyConfig.getFloat("default-value"));
+        Collection<GeyserEntityProperty<?>> existing =
+                event.properties(
+                        entityIdentifier
+                );
+
+        FileConfiguration entityConfig =
+                configManager
+                        .getEntityTypesCache()
+                        .get(
+                                entityIdentifier
+                        );
+
+        /*
+         * Defensive check:
+         *
+         * If an entity config somehow failed to load,
+         * log it instead of throwing another NPE.
+         */
+        if (entityConfig == null) {
+
+            logger().warning(
+                    "No entity configuration found for "
+                            +
+                            entityIdentifier
+            );
+
+            return;
+        }
+
+        FileConfiguration properties =
+                entityConfig
+                        .getConfigurationSection(
+                                "properties"
+                        );
+
+        if (properties == null) {
+
+            logger().warning(
+                    "No properties section found for "
+                            +
+                            entityIdentifier
+            );
+
+            return;
+        }
+
+        for (Object entityKey :
+                properties
+                        .getRootNode()
+                        .childrenMap()
+                        .keySet()) {
+
+            String entityString =
+                    entityKey.toString();
+
+            FileConfiguration propertyConfig =
+                    entityConfig
+                            .getConfigurationSection(
+                                    "properties."
+                                            +
+                                            entityString
+                            );
+
+            if (propertyConfig == null) {
+                continue;
+            }
+
+            String propertyType =
+                    propertyConfig
+                            .getString(
+                                    "property-type"
+                            );
+
+            if ("integer".equals(
+                    propertyType
+            )) {
+
+                EntityUtils.registerInteger(
+                        event,
+                        existing,
+                        entityIdentifier,
+                        propertyConfig.getString(
+                                "id"
+                        ),
+                        propertyConfig.getInt(
+                                "min-value"
+                        ),
+                        propertyConfig.getInt(
+                                "max-value"
+                        ),
+                        propertyConfig.getInt(
+                                "default-value"
+                        )
+                );
+
+            } else if ("float".equals(
+                    propertyType
+            )) {
+
+                EntityUtils.registerFloat(
+                        event,
+                        existing,
+                        entityIdentifier,
+                        propertyConfig.getString(
+                                "id"
+                        ),
+                        propertyConfig.getInt(
+                                "min-value"
+                        ),
+                        propertyConfig.getInt(
+                                "max-value"
+                        ),
+                        propertyConfig.getFloat(
+                                "default-value"
+                        )
+                );
             }
         }
     }
 
-    private void loadManagers() {
-        this.configManager = new ConfigManager(this);
+    /*
+     * ========================================
+     * MANAGER INITIALIZATION FIX
+     * ========================================
+     */
+
+    private synchronized void ensureManagersLoaded() {
+
+        /*
+         * FileConfiguration internally calls
+         * GeyserDisplayEntity.getExtension(),
+         * therefore the static extension reference
+         * MUST be assigned before constructing
+         * ConfigManager.
+         */
+        if (extension == null) {
+
+            extension =
+                    this;
+        }
+
+        if (configManager == null) {
+
+            logger().info(
+                    "Initializing GeyserDisplayEntity configuration manager..."
+            );
+
+            configManager =
+                    new ConfigManager(
+                            this
+                    );
+
+            logger().info(
+                    "GeyserDisplayEntity configuration manager initialized."
+            );
+        }
     }
 
     public static GeyserDisplayEntity getExtension() {
+
         return extension;
     }
 
     public ConfigManager getConfigManager() {
+
+        ensureManagersLoaded();
+
         return configManager;
     }
 }
