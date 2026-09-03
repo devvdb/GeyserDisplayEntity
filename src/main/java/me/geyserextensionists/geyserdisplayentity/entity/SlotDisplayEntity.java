@@ -117,40 +117,6 @@ public class SlotDisplayEntity extends Entity {
         propertyManager.addProperty(new FloatProperty(Identifier.of("geyser:t_z"), MAX_VALUE, MIN_VALUE, 0F), t.getZ() * 10);
     }
 
-    private void logRotationState(String source) {
-
-        Quaternionf left =
-                lastLeft != null
-                        ? lastLeft
-                        : Quaternionf.IDENTITY;
-
-        Quaternionf right =
-                lastRight != null
-                        ? lastRight
-                        : Quaternionf.IDENTITY;
-
-        System.out.println(
-                "[GeyserDisplayEntity] ROTATION "
-                        + source
-                        + " world=("
-                        + position.getX() + ", "
-                        + position.getY() + ", "
-                        + position.getZ() + ") "
-                        + "left=("
-                        + left.getX() + ", "
-                        + left.getY() + ", "
-                        + left.getZ() + ", "
-                        + left.getW() + ") "
-                        + "right=("
-                        + right.getX() + ", "
-                        + right.getY() + ", "
-                        + right.getZ() + ", "
-                        + right.getW() + ") "
-                        + "bedrockYaw="
-                        + getCombinedYaw()
-        );
-    }
-
     private float getCombinedYaw() {
 
         Quaternionf left =
@@ -211,7 +177,7 @@ public class SlotDisplayEntity extends Entity {
                 );
 
         return MathUtils.wrapDegrees(
-                -(float) Math.toDegrees(
+                (float) Math.toDegrees(
                         Math.atan2(
                                 sinYaw,
                                 cosYaw
@@ -294,8 +260,6 @@ public class SlotDisplayEntity extends Entity {
 
         pushRotationProperties();
         updateBedrockEntityProperties();
-
-        logRotationState("LEFT");
     }
 
     public void setRightRotation(
@@ -311,8 +275,6 @@ public class SlotDisplayEntity extends Entity {
 
         pushRotationProperties();
         updateBedrockEntityProperties();
-
-        logRotationState("RIGHT");
     }
 
     protected void setRotation(Quaternionf q) {

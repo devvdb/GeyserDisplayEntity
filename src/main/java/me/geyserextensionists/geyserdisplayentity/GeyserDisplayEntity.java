@@ -2,6 +2,7 @@ package me.geyserextensionists.geyserdisplayentity;
 
 import me.geyserextensionists.geyserdisplayentity.entity.BlockDisplayEntity;
 import me.geyserextensionists.geyserdisplayentity.entity.ItemDisplayEntity;
+import me.geyserextensionists.geyserdisplayentity.entity.NativeDisplayEntity;
 import me.geyserextensionists.geyserdisplayentity.entity.SlotDisplayEntity;
 import me.geyserextensionists.geyserdisplayentity.managers.ConfigManager;
 import me.geyserextensionists.geyserdisplayentity.util.EntityUtils;
@@ -16,10 +17,7 @@ import org.geysermc.geyser.api.event.lifecycle.GeyserDefineEntityPropertiesEvent
 import org.geysermc.geyser.api.event.lifecycle.GeyserPreInitializeEvent;
 import org.geysermc.geyser.api.extension.Extension;
 import org.geysermc.geyser.api.util.Identifier;
-import org.geysermc.geyser.entity.BedrockEntityDefinition;
-import org.geysermc.geyser.entity.EntityTypeBase;
-import org.geysermc.geyser.entity.EntityTypeDefinition;
-import org.geysermc.geyser.entity.VanillaEntityType;
+import org.geysermc.geyser.entity.*;
 import org.geysermc.geyser.entity.type.Entity;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.metadata.MetadataTypes;
 import org.geysermc.mcprotocollib.protocol.data.game.entity.type.EntityType;
@@ -210,57 +208,118 @@ public class GeyserDisplayEntity implements Extension {
                                     SlotDisplayEntity.class,
                                     entityBase
                             )
-                            .addTranslator(
-                                    null
-                            )
-                            .addTranslator(
-                                    null
-                            )
-                            .addTranslator(
-                                    null
-                            )
+
+                            // ID 8
+                            .addTranslator(null) // Interpolation delay
+
+                            // ID 9
+                            .addTranslator(null) // Transformation interpolation duration
+
+                            // ID 10
+                            .addTranslator(null) // Position/rotation interpolation duration
+
+                            // ID 11
                             .addTranslator(
                                     MetadataTypes.VECTOR3,
                                     SlotDisplayEntity::setTranslation
                             )
+
+                            // ID 12
                             .addTranslator(
                                     MetadataTypes.VECTOR3,
                                     SlotDisplayEntity::setScale
                             )
+
+                            // ID 13
                             .addTranslator(
                                     MetadataTypes.QUATERNION,
                                     SlotDisplayEntity::setLeftRotation
                             )
+
+                            // ID 14
                             .addTranslator(
                                     MetadataTypes.QUATERNION,
                                     SlotDisplayEntity::setRightRotation
                             )
-                            .addTranslator(
-                                    null
+
+                            // ID 15
+                            .addTranslator(null) // Billboard
+
+                            // ID 16
+                            .addTranslator(null) // Brightness override
+
+                            // ID 17
+                            .addTranslator(null) // View range
+
+                            // ID 18
+                            .addTranslator(null) // Shadow radius
+
+                            // ID 19
+                            .addTranslator(null) // Shadow strength
+
+                            // ID 20
+                            .addTranslator(null) // Width
+
+                            // ID 21
+                            .addTranslator(null) // Height
+
+                            // ID 22
+                            .addTranslator(null) // Glow color override
+
+                            .build();
+            
+            EntityTypeBase<NativeDisplayEntity> nativeBlockDisplayBase =
+                    EntityTypeBase.baseInherited(
+                                    NativeDisplayEntity.class,
+                                    entityBase
                             )
+
+                            /*
+                             * Display metadata IDs 8-10
+                             */
+                            .addTranslator(null) // Interpolation delay
+                            .addTranslator(null) // Transformation interpolation duration
+                            .addTranslator(null) // Position/rotation interpolation duration
+
+                            /*
+                             * Display metadata IDs 11-14
+                             */
                             .addTranslator(
-                                    null
+                                    MetadataTypes.VECTOR3,
+                                    NativeDisplayEntity::setTranslation
                             )
+
                             .addTranslator(
-                                    null
+                                    MetadataTypes.VECTOR3,
+                                    NativeDisplayEntity::setDisplayScale
                             )
+
                             .addTranslator(
-                                    null
+                                    MetadataTypes.QUATERNION,
+                                    NativeDisplayEntity::setLeftRotation
                             )
+
                             .addTranslator(
-                                    null
+                                    MetadataTypes.QUATERNION,
+                                    NativeDisplayEntity::setRightRotation
                             )
-                            .addTranslator(
-                                    null
-                            )
-                            .addTranslator(
-                                    null
-                            )
+
+                            /*
+                             * Remaining display-base metadata
+                             */
+                            .addTranslator(null) // Billboard
+                            .addTranslator(null) // Brightness
+                            .addTranslator(null) // View range
+                            .addTranslator(null) // Shadow radius
+                            .addTranslator(null) // Shadow strength
+                            .addTranslator(null) // Width
+                            .addTranslator(null) // Height
+                            .addTranslator(null) // Glow color override
+
                             .build();
 
             BLOCK_DISPLAY =
-                    VanillaEntityType
-                            .inherited(
+                    VanillaEntityType.inherited(
                                     BlockDisplayEntity::new,
                                     slotDisplayBase
                             )
@@ -280,20 +339,6 @@ public class GeyserDisplayEntity implements Extension {
                             .bedrockDefinition(
                                     BLOCK_DISPLAY_BEDROCK
                             )
-
-                            /*
-                             * Minecraft 1.21.11 / Geyser 2.11.1:
-                             *
-                             * There is an additional INT metadata field
-                             * before the BlockDisplay block-state field.
-                             *
-                             * Without this placeholder, BLOCK_STATE gets
-                             * registered at metadata ID 22 instead of 23.
-                             */
-                            .addTranslator(
-                                    null
-                            )
-
                             .addTranslator(
                                     MetadataTypes.BLOCK_STATE,
                                     BlockDisplayEntity::setDisplayedBlockState
